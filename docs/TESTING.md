@@ -2,7 +2,7 @@
 
 ## Automated: what ran and the results
 
-The latest verified run is [CI run 40210796212](https://github.com/surproductions/Trivia-Clash/actions/runs/40210796212) on commit `20877aa`, on 2026-10-25, using Xcode 26.6 and an iPhone 17 Pro simulator on iOS 26.5.
+The latest verified run is [CI run 40231377639](https://github.com/surproductions/Trivia-Clash/actions/runs/40231377639) on commit `5d0e513`, on 2026-10-25, using Xcode 26.6 and an iPhone 17 Pro simulator on iOS 26.5.
 
 | Suite | Command | Result |
 |---|---|---|
@@ -10,7 +10,7 @@ The latest verified run is [CI run 40210796212](https://github.com/surproduction
 | Question validator + tooling | `python3 -m unittest scripts/test_questions.py` | **11 passed** |
 | Question bank validation | `python3 scripts/questions.py validate` | **4,908 questions, 0 problems** |
 | Bundle up to date | `python3 scripts/questions.py check-bundle` | passed |
-| Source links | `python3 scripts/check_sources.py` | **955/955** Wikipedia articles exist (one bad link found and fixed) |
+| Source links | `python3 scripts/check_sources.py` | All distinct Wikipedia articles exist ([run 40231377620](https://github.com/surproductions/Trivia-Clash/actions/runs/40231377620); 9 bad links found after the expansion and fixed) |
 | Release build | archive → App Store export → signature/profile verification | passed (signed IPA, Team Store profile) |
 
 ### iOS test coverage
