@@ -42,10 +42,49 @@ struct QuestionView: View {
     @ObservedObject var session: GameSession
     let view: PlayerView
     @State private var lastTickSecond = 11
+    /// Every phone reveals the question at the same shared moment (see GameSession).
+    @State private var revealed = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         if let round = view.round {
+            Group {
+                if revealed { questionBody(round) } else { getReady(round) }
+            }
+            .task(id: round.no) {
+                // Re-check in short steps: the clock sync may sharpen while we wait.
+                while !Task.isCancelled {
+                    let wait = session.revealedAtLocal(round) - Monotonic.nowMs()
+                    if wait <= 0 { break }
+                    try? await Task.sleep(nanoseconds: UInt64(min(wait, 100)) * 1_000_000)
+                }
+                revealed = true
+                SoundPlayer.shared.play(.start)
+            }
+        }
+    }
+
+    /// Shown for the second or so before the shared reveal.
+    private func getReady(_ round: RoundView) -> some View {
+        VStack(spacing: 18) {
+            MatchHeader(session: session, view: view)
+            Spacer()
+            Text("Question \(round.no)")
+                .font(.display(.largeTitle))
+                .foregroundStyle(Theme.ink)
+            Chip(text: round.category.title, symbol: round.category.symbol)
+            if round.multiplier > 1 {
+                Label("Double points", systemImage: "bolt.fill").font(.label(.headline)).foregroundStyle(Theme.voltInk)
+            }
+            Spacer()
+            Spacer()
+        }
+        .padding(Theme.gutter)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Get ready. Question \(round.no), \(round.category.title)")
+    }
+
+    private func questionBody(_ round: RoundView) -> some View {
             VStack(alignment: .leading, spacing: 18) {
                 MatchHeader(session: session, view: view)
                 TimelineView(.animation(minimumInterval: 1.0 / 30, paused: false)) { _ in
@@ -87,7 +126,6 @@ struct QuestionView: View {
             }
             .padding(Theme.gutter)
             .animation(reduceMotion ? nil : .easeOut(duration: 0.15), value: session.pendingChoice)
-        }
     }
 
     private func state(for i: Int) -> AnswerState {

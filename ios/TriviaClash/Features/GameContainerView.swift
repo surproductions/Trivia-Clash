@@ -50,9 +50,6 @@ struct GameContainerView: View {
         .onChange(of: session.view?.room.status) { old, new in
             phaseChanged(from: old, to: new)
         }
-        .onChange(of: session.view?.round?.no) { _, _ in
-            if session.view?.room.status == .question { SoundPlayer.shared.play(.start) }
-        }
     }
 
     private func phaseChanged(from old: Phase?, to new: Phase?) {
@@ -73,8 +70,6 @@ struct GameContainerView: View {
         case .finished:
             app.record(finished: view, session: session)
             SoundPlayer.shared.play(.victory)
-        case .question where old == .countdown:
-            SoundPlayer.shared.play(.start)
         default:
             break
         }

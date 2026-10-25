@@ -25,7 +25,7 @@ The 10-second window is a core rule, not a cosmetic timer. These protections mak
 - **No system can stop a second device or a friend.** A determined player can photograph a question and search on another phone. Ten seconds makes that hard, and the speed bonus makes it costly, but not impossible.
 - **The host is the referee in nearby play.** A modified host app could cheat for itself. Nearby play is meant for friends in the same room. The online backend (see BACKEND.md) moves authority to a database for public play.
 - **The bundle key ships inside the app.** Encrypting the bundle keeps answers out of plain sight, but someone who reverse-engineers the binary could extract them. In solo play only that player is affected. In nearby play, guests never need the answers.
-- **Network delay.** Guests on Wi-Fi or Bluetooth typically see 5–50 ms of latency. Answers are judged on arrival at the host, so a guest who taps at the last instant on a slow link can be marked late. Guests measure the round-trip time and end their on-screen countdown one round trip early, so a tap made before the display reaches zero still arrives in time.
+- **Network delay is neutralised, within limits.** Questions are sent about 1.2 s ahead and revealed on every phone at the same synchronised moment. Each guest's reaction time is measured on their own phone, and the host credits it only within that guest's measured round-trip time, capped at 400 ms. The round stays open the same 400 ms past the 10-second mark for answers still in flight. A tampered guest app could gain at most about 10 points per question, which is the speed value of 400 ms. A guest whose real delay exceeds 400 ms (very poor Bluetooth) is still slightly disadvantaged.
 
 ## Online backend (designed)
 

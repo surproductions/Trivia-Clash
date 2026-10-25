@@ -76,8 +76,8 @@ final class WireProtocolTests: XCTestCase {
     func testClientMessagesRoundTrip() throws {
         let messages: [ClientMessage] = [
             .hello(playerId: "p", name: "Sam", avatar: 3, seen: ["a", "b"], protocolVersion: 1),
-            .setReady(ready: true), .setTeam(target: "p", team: 2), .submit(round: 4, choice: 1),
-            .ping(sentAt: 123), .leave(reason: "bye"),
+            .setReady(ready: true), .setTeam(target: "p", team: 2),
+            .submit(round: 4, choice: 1, elapsedMs: 2_345), .ping(sentAt: 123), .pong(sentAt: 456), .leave(reason: "bye"),
         ]
         for m in messages {
             let data = try XCTUnwrap(WireProtocol.encode(m))
@@ -102,24 +102,50 @@ final class WireProtocolTests: XCTestCase {
 }
 
 final class ClockSyncTests: XCTestCase {
-    private func view(serverNow: Int64, version: Int = 2) -> PlayerView {
+    private func view(serverNow: Int64, version: Int = 2, round: RoundView? = nil) -> PlayerView {
         PlayerView(serverNow: serverNow, version: version, me: "me",
                    room: RoomInfo(id: "r", code: "ABCDE", mode: .ffa, status: .question, hostId: "h", questionCount: 10,
                                   totalRounds: 10, categories: [], difficulty: .mixed, teamCount: 2, finalDouble: false,
                                   matchNo: 1, currentRound: 1, phaseEndsAt: serverNow + 10_000, maxPlayers: 12),
-                   members: [], teams: nil, round: nil, reveal: nil)
+                   members: [], teams: nil, round: round, reveal: nil)
     }
 
-    func testDeadlineIsMappedToLocalClockWithLatencyCorrection() {
+    private func round(opensAt: Int64) -> RoundView {
+        RoundView(no: 1, total: 10, category: .general, difficulty: .easy, prompt: "Q?", options: ["a", "b", "c", "d"],
+                  opensAt: opensAt, closesAt: opensAt + 10_000, multiplier: 1, answeredCount: 0, myChoice: nil, closed: false)
+    }
+
+    func testClockOffsetUsesLowestLatencySample() {
         let session = GameSession(myId: "me")
-        session.oneWayLatencyMs = 40
-        // Host clock says 1,000,000; we receive it at our local 5,000.
-        session.apply(view(serverNow: 1_000_000), receivedAt: 5_000)
-        // The host deadline is 10 s after its "now". Locally the countdown ends 2 × 40 ms earlier:
-        // the view took ~40 ms to arrive, and an answer needs ~40 ms to get back.
-        XCTAssertEqual(session.remainingMs(until: 1_010_000, now: 5_000), 9_920)
-        XCTAssertEqual(session.remainingMs(until: 1_010_000, now: 14_920), 0)
-        XCTAssertEqual(session.remainingMs(until: 1_010_000, now: 20_000), 0, "never negative")
+        // Local and host clocks differ by exactly 1,000,000 ms.
+        session.recordClockSample(sentAt: 1_000, authorityNow: 1_001_150, receivedAt: 1_300) // rtt 300, skewed
+        session.recordClockSample(sentAt: 2_000, authorityNow: 1_002_010, receivedAt: 2_020) // rtt 20, accurate
+        session.recordClockSample(sentAt: 3_000, authorityNow: 1_003_200, receivedAt: 3_250) // rtt 250
+        XCTAssertTrue(session.hasClockSync)
+        XCTAssertEqual(session.clockOffsetMs, 1_000_000)
+        XCTAssertEqual(session.localTime(ofAuthority: 1_010_000), 10_000)
+    }
+
+    func testEveryPhoneRevealsAtTheSharedMoment() {
+        let session = GameSession(myId: "me")
+        session.recordClockSample(sentAt: 0, authorityNow: 1_000_000, receivedAt: 0)
+        // The question arrives 300 ms early (delivery lead) and is revealed at the scheduled time.
+        session.apply(view(serverNow: 1_004_700, round: round(opensAt: 1_005_000)), receivedAt: 4_700)
+        let r = session.view!.round!
+        XCTAssertFalse(session.isRevealed(r, now: 4_999))
+        XCTAssertTrue(session.isRevealed(r, now: 5_000))
+        XCTAssertEqual(session.reactionMs(r, now: 7_500), 2_500)
+        XCTAssertEqual(session.remainingMs(until: r.closesAt, now: 5_000), 10_000)
+    }
+
+    func testLateArrivingQuestionStartsThePlayersClockOnArrival() {
+        let session = GameSession(myId: "me")
+        session.recordClockSample(sentAt: 0, authorityNow: 1_000_000, receivedAt: 0)
+        // E.g. after a reconnect the question shows up 2 s after the shared reveal.
+        session.apply(view(serverNow: 1_007_000, round: round(opensAt: 1_005_000)), receivedAt: 7_000)
+        let r = session.view!.round!
+        XCTAssertEqual(session.reactionMs(r, now: 8_000), 1_000, "reaction is measured from when the player saw it")
+        XCTAssertEqual(session.remainingMs(until: r.closesAt, now: 8_000), 7_000, "but the deadline doesn't move")
     }
 
     func testStaleViewsAreIgnored() {

@@ -25,6 +25,18 @@ struct EngineTiming {
     /// If nobody advanced the match for longer than this after a phase ended,
     /// the next question starts "now" so that it still gets its full window.
     var lateStartGraceMs: Int64 = 1_500
+    /// How far ahead of its reveal time a question is sent out, so every phone
+    /// has it before the shared reveal moment (0 for solo).
+    var deliveryLeadMs: Int64 = 0
+    /// Most network delay the authority will credit back to a remote player. Also
+    /// how long a round stays open after its nominal deadline so their answers can
+    /// still arrive (0 for solo).
+    var maxCompensationMs: Int64 = 0
+    /// A remote answer may arrive this much "before" the reveal because of clock-sync error.
+    var earlyToleranceMs: Int64 = 250
+
+    /// Settings for nearby multiplayer, where guests are a network hop away.
+    static let nearby = EngineTiming(countdownMs: 2_500, deliveryLeadMs: 1_200, maxCompensationMs: 400)
 }
 
 /// The authoritative state machine for one room. It is the single source of
@@ -328,13 +340,17 @@ final class MatchEngine {
         return changed
     }
 
+    /// The question is published at `time` but revealed at `time + deliveryLeadMs`,
+    /// so it reaches every phone before the shared reveal moment. The round stays
+    /// open `maxCompensationMs` past the nominal deadline for in-flight answers.
     private func openRound(_ no: Int, at time: Int64) {
         let i = no - 1
-        rounds[i].opensAt = time
-        rounds[i].closesAt = time + timing.answerWindowMs
+        let reveal = time + timing.deliveryLeadMs
+        rounds[i].opensAt = reveal
+        rounds[i].closesAt = reveal + timing.answerWindowMs
         currentRound = no
         phase = .question
-        phaseEndsAt = rounds[i].closesAt
+        phaseEndsAt = reveal + timing.answerWindowMs + timing.maxCompensationMs
     }
 
     private func allActiveAnswered() -> Bool {
@@ -382,9 +398,18 @@ final class MatchEngine {
         phaseEndsAt = nil
     }
 
-    /// Submits the answer shown at display position `choice` (0–3).
-    /// The first accepted answer is final; anything at or after the deadline is rejected.
-    func submit(playerId: String, round roundNo: Int, choice: Int, now: Int64) throws -> SubmitOutcome {
+    /// Submits the answer shown at display position `choice` (0–3). The first
+    /// accepted answer is final.
+    ///
+    /// Answer time is measured from the shared reveal moment. For the authority's
+    /// own player it is simply `now − opensAt`. A remote player reports the
+    /// reaction time measured on their own phone (`reportedElapsedMs`), so network
+    /// delay doesn't count against them. The report is trusted only within
+    /// `compensationMs` (the measured round-trip to that player, capped at
+    /// `maxCompensationMs`). Nobody can claim to be faster than the arrival time
+    /// allows by more than that, and anything that works out at or past 10 s scores nothing.
+    func submit(playerId: String, round roundNo: Int, choice: Int, now: Int64,
+                reportedElapsedMs: Int64? = nil, compensationMs: Int64 = 0) throws -> SubmitOutcome {
         guard (0...3).contains(choice) else { throw EngineError.invalidChoice }
         guard let pi = index(of: playerId), !players[pi].left else { throw EngineError.notMember }
         guard roundNo >= 1, roundNo <= rounds.count, rounds[roundNo - 1].opensAt != nil else {
@@ -394,16 +419,30 @@ final class MatchEngine {
         if let existing = rounds[ri].answers[playerId] {
             return SubmitOutcome(status: .alreadyAnswered, choice: existing.shownChoice)
         }
+        let isRemote = reportedElapsedMs != nil
+        let compensation = isRemote ? min(max(compensationMs, 0), timing.maxCompensationMs) : 0
         guard phase == .question, currentRound == roundNo, rounds[ri].closedAt == nil,
               let opens = rounds[ri].opensAt, let closes = rounds[ri].closesAt,
-              now >= opens, now < closes else {
+              now < closes + compensation else {
+            tick(now: now)
+            return SubmitOutcome(status: .tooLate, choice: nil)
+        }
+        guard now >= opens - (isRemote ? timing.earlyToleranceMs : 0) else {
+            return SubmitOutcome(status: .notActive, choice: nil)
+        }
+        let arrivalElapsed = max(0, now - opens)
+        var elapsed = arrivalElapsed
+        if let reported = reportedElapsedMs {
+            elapsed = min(arrivalElapsed, max(reported, arrivalElapsed - compensation, 0))
+        }
+        guard elapsed < timing.answerWindowMs else {
             tick(now: now)
             return SubmitOutcome(status: .tooLate, choice: nil)
         }
         let perm = AnswerOrder.permutation(seed: rounds[ri].seed, playerId: playerId)
         let original = perm[choice]
         let correct = original == rounds[ri].question.answer
-        let remaining = closes - now
+        let remaining = timing.answerWindowMs - elapsed
         let breakdown = Scoring.score(correct: correct, remainingMs: remaining,
                                       streakBefore: players[pi].streak, multiplier: rounds[ri].multiplier)
         rounds[ri].answers[playerId] = Answer(playerId: playerId, choice: original, shownChoice: choice, receivedAt: now,

@@ -21,13 +21,16 @@ class GameSession: ObservableObject, Identifiable {
     /// authority confirms it.
     @Published var pendingChoice: Int?
 
-    /// Local monotonic time that is mapped to the authority's `view.serverNow`.
-    /// It is shifted back by two one-way delays: one for the view that just
-    /// arrived and one for an answer travelling back. The local countdown
-    /// therefore reaches zero just as a tap could still arrive in time.
-    private(set) var anchorLocalMs: Int64 = 0
-    /// Estimated one-way delay to the authority (0 for local engines).
-    var oneWayLatencyMs: Int64 = 0
+    /// Authority clock minus this device's monotonic clock. 0 when the engine
+    /// runs locally. For a guest it comes from ping/pong samples; the sample with
+    /// the smallest round trip is the most accurate, NTP-style.
+    private(set) var clockOffsetMs: Int64 = 0
+    private var clockSamples: [(rtt: Int64, offset: Int64)] = []
+    private(set) var hasClockSync = false
+    /// When each round's view first reached this device (local clock). If a view
+    /// arrives after the reveal time (for example after a reconnect), the player's
+    /// clock starts when they actually saw the question.
+    private var firstSeenLocal: [String: Int64] = [:]
 
     init(myId: String) { self.myId = myId }
 
@@ -40,7 +43,16 @@ class GameSession: ObservableObject, Identifiable {
     /// Accept a new authoritative view received at local time `receivedAt`.
     func apply(_ newView: PlayerView, receivedAt: Int64) {
         if let current = view, current.room.id == newView.room.id, newView.version < current.version { return }
-        anchorLocalMs = receivedAt - 2 * oneWayLatencyMs
+        if isAuthority {
+            clockOffsetMs = 0
+        } else if !hasClockSync {
+            // Until a ping/pong sample arrives, assume the view took no time to arrive.
+            clockOffsetMs = newView.serverNow - receivedAt
+        }
+        if let round = newView.round {
+            let key = roundKey(newView, round.no)
+            if firstSeenLocal[key] == nil { firstSeenLocal[key] = receivedAt }
+        }
         if newView.round?.no != view?.round?.no || newView.room.matchNo != view?.room.matchNo {
             pendingChoice = nil
         }
@@ -49,10 +61,40 @@ class GameSession: ObservableObject, Identifiable {
     }
 
     /// Converts an authority timestamp into this device's monotonic clock.
-    func localTime(ofAuthority t: Int64) -> Int64 {
-        guard let view else { return t }
-        return anchorLocalMs + (t - view.serverNow)
+    func localTime(ofAuthority t: Int64) -> Int64 { t - clockOffsetMs }
+
+    /// Records a ping/pong exchange: sent at local `sentAt`, the authority's clock
+    /// read `authorityNow`, and the reply arrived at local `receivedAt`. Keeps the
+    /// lowest-latency of the recent samples.
+    func recordClockSample(sentAt: Int64, authorityNow: Int64, receivedAt: Int64) {
+        let rtt = receivedAt - sentAt
+        guard rtt >= 0 else { return }
+        clockSamples.append((rtt, authorityNow - (sentAt + rtt / 2)))
+        if clockSamples.count > 12 { clockSamples.removeFirst(clockSamples.count - 12) }
+        if let best = clockSamples.min(by: { $0.rtt < $1.rtt }) {
+            clockOffsetMs = best.offset
+            hasClockSync = true
+        }
     }
+
+    /// When the current question was revealed on this device (local clock).
+    func revealedAtLocal(_ round: RoundView) -> Int64 {
+        let scheduled = localTime(ofAuthority: round.opensAt)
+        guard let view, let seen = firstSeenLocal[roundKey(view, round.no)] else { return scheduled }
+        return max(scheduled, seen)
+    }
+
+    /// Whether the current question should be visible yet on this device.
+    func isRevealed(_ round: RoundView, now: Int64 = Monotonic.nowMs()) -> Bool {
+        now >= revealedAtLocal(round)
+    }
+
+    /// The player's reaction time on this device: from reveal to tap.
+    func reactionMs(_ round: RoundView, now: Int64 = Monotonic.nowMs()) -> Int64 {
+        max(0, now - revealedAtLocal(round))
+    }
+
+    private func roundKey(_ view: PlayerView, _ no: Int) -> String { "\(view.room.id)#\(view.room.matchNo)#\(no)" }
 
     /// Milliseconds left until an authority deadline, as seen on this device.
     func remainingMs(until deadline: Int64?, now: Int64 = Monotonic.nowMs()) -> Int64 {
@@ -149,11 +191,12 @@ class EngineSession: GameSession {
     }
 
     override func submit(choice: Int) {
-        guard let round = view?.round, pendingChoice == nil else { return }
+        guard let round = view?.round, pendingChoice == nil, isRevealed(round) else { return }
         pendingChoice = choice
         perform { now in
             let outcome = try engine.submit(playerId: myId, round: round.no, choice: choice, now: now)
             if outcome.status == .tooLate { pendingChoice = nil; notice = "Time's up — that answer arrived too late." }
+            if outcome.status == .notActive { pendingChoice = nil }
         }
     }
 

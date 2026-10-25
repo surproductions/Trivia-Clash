@@ -5,7 +5,7 @@ import UIKit
 // MARK: - Wire protocol
 
 enum WireProtocol {
-    static let version = 1
+    static let version = 2
     static let serviceType = "tclash" // must match NSBonjourServices in Info.plist
 
     static func encode<T: Encodable>(_ value: T) -> Data? { try? JSONEncoder().encode(value) }
@@ -17,8 +17,13 @@ enum ClientMessage: Codable, Equatable {
     case hello(playerId: String, name: String, avatar: Int, seen: [String], protocolVersion: Int)
     case setReady(ready: Bool)
     case setTeam(target: String, team: Int)
-    case submit(round: Int, choice: Int)
+    /// `elapsedMs` is the reaction time measured on the guest's phone, from reveal
+    /// to tap. The host only credits it within the measured network delay.
+    case submit(round: Int, choice: Int, elapsedMs: Int64)
+    /// Clock-sync probe from the guest (guest clock).
     case ping(sentAt: Int64)
+    /// Reply to the host's latency probe (echoes the host clock).
+    case pong(sentAt: Int64)
     case leave(reason: String)
 }
 
@@ -27,7 +32,10 @@ enum HostMessage: Codable, Equatable {
     case welcome(playerId: String, roomCode: String)
     case state(view: PlayerView)
     case submitResult(round: Int, outcome: SubmitOutcome)
-    case pong(sentAt: Int64)
+    /// Reply to a guest's clock probe, carrying the host's clock at reply time.
+    case pong(sentAt: Int64, hostNow: Int64)
+    /// Latency probe from the host (host clock), echoed back by the guest.
+    case ping(sentAt: Int64)
     case rejected(reason: String)
     case closed(reason: String)
 }
@@ -119,9 +127,14 @@ final class NearbyHostTransport: NSObject, MCSessionDelegate, MCNearbyServiceAdv
 final class NearbyHostSession: EngineSession {
     private let transport: NearbyHostTransport
     private var peerToPlayer: [MCPeerID: String] = [:]
+    /// Smoothed round-trip time to each guest, measured by the host itself.
+    private var rttByPlayer: [String: Int64] = [:]
+    private var probeTimer: Timer?
+    /// Credit given to a guest whose latency hasn't been measured yet.
+    private static let defaultCompensationMs: Int64 = 150
 
     init(profile: Profile, mode: GameMode, settings: MatchSettings, bank: QuestionBank, seen: Set<String>) {
-        let engine = MatchEngine(mode: mode, settings: settings) { settings, allSeen, count in
+        let engine = MatchEngine(mode: mode, settings: settings, timing: .nearby) { settings, allSeen, count in
             bank.pick(settings: settings, seen: allSeen, count: count)
         }
         transport = NearbyHostTransport(displayName: profile.name, code: engine.code)
@@ -136,6 +149,22 @@ final class NearbyHostSession: EngineSession {
         transport.startAdvertising()
         UIApplication.shared.isIdleTimerDisabled = true
         startTicking()
+        let probe = Timer(timeInterval: 1.5, repeats: true) { [weak self] _ in self?.probeLatency() }
+        RunLoop.main.add(probe, forMode: .common)
+        probeTimer = probe
+    }
+
+    private func probeLatency() {
+        let peers = Array(peerToPlayer.keys)
+        guard !peers.isEmpty else { return }
+        transport.send(.ping(sentAt: Monotonic.nowMs()), to: peers)
+    }
+
+    /// The network delay credited to a guest's answer: their measured round trip
+    /// plus a little slack, capped by the engine.
+    private func compensation(for playerId: String) -> Int64 {
+        guard let rtt = rttByPlayer[playerId] else { return Self.defaultCompensationMs }
+        return rtt + 40
     }
 
     override var title: String { engine.mode.title }
@@ -178,12 +207,23 @@ final class NearbyHostSession: EngineSession {
             do { try engine.setTeam(by: playerId, target: target, team: team) } catch let error as EngineError {
                 transport.send(.rejected(reason: GameSession.message(for: error)), to: [peer])
             } catch {}
-        case let .submit(round, choice):
-            if let outcome = try? engine.submit(playerId: playerId, round: round, choice: choice, now: now) {
+        case let .submit(round, choice, elapsedMs):
+            if let outcome = try? engine.submit(playerId: playerId, round: round, choice: choice, now: now,
+                                                reportedElapsedMs: max(0, elapsedMs),
+                                                compensationMs: compensation(for: playerId)) {
                 transport.send(.submitResult(round: round, outcome: outcome), to: [peer])
             }
         case let .ping(sentAt):
-            transport.send(.pong(sentAt: sentAt), to: [peer])
+            transport.send(.pong(sentAt: sentAt, hostNow: Monotonic.nowMs()), to: [peer])
+            return
+        case let .pong(sentAt):
+            let rtt = max(0, now - sentAt)
+            if let previous = rttByPlayer[playerId] {
+                // Rises slowly and falls fast, so one slow packet doesn't inflate the credit.
+                rttByPlayer[playerId] = rtt < previous ? rtt : (previous * 3 + rtt) / 4
+            } else {
+                rttByPlayer[playerId] = rtt
+            }
             return
         case .leave:
             engine.leave(playerId, now: now)
@@ -201,6 +241,7 @@ final class NearbyHostSession: EngineSession {
 
     override func leave() {
         transport.send(.closed(reason: "The host ended the game."), to: Array(peerToPlayer.keys))
+        probeTimer?.invalidate()
         stopTicking()
         engine.close()
         transport.stop()
@@ -213,6 +254,7 @@ final class NearbyHostSession: EngineSession {
     }
 
     deinit {
+        probeTimer?.invalidate()
         transport.stop()
     }
 }
@@ -361,7 +403,7 @@ final class NearbyGuestSession: GameSession {
         transport.startBrowsing()
         transport.connect(to: room)
         UIApplication.shared.isIdleTimerDisabled = true
-        let t = Timer(timeInterval: 2, repeats: true) { [weak self] _ in self?.heartbeat() }
+        let t = Timer(timeInterval: 1, repeats: true) { [weak self] _ in self?.heartbeat() }
         RunLoop.main.add(t, forMode: .common)
         pingTimer = t
     }
@@ -375,7 +417,13 @@ final class NearbyGuestSession: GameSession {
             connection = .connected
             transport.send(.hello(playerId: profile.id, name: profile.name, avatar: profile.avatar,
                                   seen: Array(seen.suffix(300)), protocolVersion: WireProtocol.version))
-            transport.send(.ping(sentAt: Monotonic.nowMs()))
+            // A quick burst of clock probes so the shared reveal time is accurate
+            // before the first question; the lowest-latency sample wins.
+            for i in 0..<6 {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.15 * Double(i)) { [weak self] in
+                    self?.transport.send(.ping(sentAt: Monotonic.nowMs()))
+                }
+            }
         } else if !closedByHost {
             if case .lost = connection { return }
             connection = everConnected ? .reconnecting : .connecting
@@ -414,10 +462,10 @@ final class NearbyGuestSession: GameSession {
                 notice = "Time's up — that answer reached the host too late."
             case .notActive: pendingChoice = nil
             }
-        case .pong(let sentAt):
-            let rtt = max(0, now - sentAt)
-            let sample = rtt / 2
-            oneWayLatencyMs = oneWayLatencyMs == 0 ? sample : (oneWayLatencyMs * 3 + sample) / 4
+        case let .pong(sentAt, hostNow):
+            recordClockSample(sentAt: sentAt, authorityNow: hostNow, receivedAt: now)
+        case .ping(let sentAt):
+            transport.send(.pong(sentAt: sentAt))
         case .rejected(let reason):
             if view == nil {
                 connection = .lost(reason)
@@ -433,9 +481,9 @@ final class NearbyGuestSession: GameSession {
     }
 
     override func submit(choice: Int) {
-        guard let round = view?.round, pendingChoice == nil, !round.closed else { return }
+        guard let round = view?.round, pendingChoice == nil, !round.closed, isRevealed(round) else { return }
         pendingChoice = choice
-        transport.send(.submit(round: round.no, choice: choice))
+        transport.send(.submit(round: round.no, choice: choice, elapsedMs: reactionMs(round)))
     }
 
     override func setReady(_ ready: Bool) { transport.send(.setReady(ready: ready)) }

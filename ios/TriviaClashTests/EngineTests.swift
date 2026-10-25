@@ -440,3 +440,84 @@ final class TeamTests: XCTestCase {
         XCTAssertEqual(teams.map(\.index), [0, 1], "ties fall back to team order")
     }
 }
+
+/// Host and guests must be scored the same for the same reaction time, however
+/// far the guest is from the host's phone.
+final class FairnessTests: XCTestCase {
+    private func nearbyEngine() throws -> (MatchEngine, Int64) {
+        let qs = (0..<30).map { Fixtures.question($0, answer: $0 % 4) }
+        let e = MatchEngine(mode: .ffa, settings: MatchSettings(questionCount: 5), code: "ABCDE", timing: .nearby, seed: 7) { _, seen, n in
+            Array(qs.filter { !seen.contains($0.id) }.prefix(n))
+        }
+        for id in ["host", "guest", "third"] { try e.join(id: id, name: id, avatar: 0, now: 0) }
+        try e.setReady("guest", true)
+        try e.setReady("third", true)
+        try e.start(by: "host", now: 0)
+        e.tick(now: e.timing.countdownMs)
+        return (e, e.rounds[0].opensAt!)
+    }
+
+    func testQuestionIsSentAheadAndRevealedAtSharedMoment() throws {
+        let (e, opens) = try nearbyEngine()
+        XCTAssertEqual(opens, e.timing.countdownMs + e.timing.deliveryLeadMs)
+        XCTAssertEqual(e.phase, .question, "the round is published before it is revealed")
+        XCTAssertEqual(try e.submit(playerId: "host", round: 1, choice: 0, now: opens - 1).status, .notActive,
+                       "nobody can answer before the reveal")
+    }
+
+    func testSameReactionTimeScoresTheSameForHostAndGuest() throws {
+        let (e, opens) = try nearbyEngine()
+        // Both react in 2.0 s. The guest's answer spends 180 ms on the network.
+        _ = try e.submit(playerId: "host", round: 1, choice: e.correctChoice(for: "host"), now: opens + 2_000)
+        _ = try e.submit(playerId: "guest", round: 1, choice: e.correctChoice(for: "guest"), now: opens + 2_180,
+                         reportedElapsedMs: 2_000, compensationMs: 220)
+        e.tick(now: opens + 20_000)
+        XCTAssertEqual(e.player("host")?.score, 1_200)
+        XCTAssertEqual(e.player("guest")?.score, 1_200)
+    }
+
+    func testReportedTimeCannotUndercutTheMeasuredDelay() throws {
+        let (e, opens) = try nearbyEngine()
+        // Arrives 3 s after reveal claiming 0 ms; only 200 ms of credit is allowed.
+        _ = try e.submit(playerId: "guest", round: 1, choice: e.correctChoice(for: "guest"), now: opens + 3_000,
+                         reportedElapsedMs: 0, compensationMs: 200)
+        e.tick(now: opens + 20_000)
+        XCTAssertEqual(e.rounds[0].answers["guest"]?.responseMs, 2_800)
+    }
+
+    func testCompensationIsCappedByTheEngine() throws {
+        let (e, opens) = try nearbyEngine()
+        _ = try e.submit(playerId: "guest", round: 1, choice: 0, now: opens + 5_000,
+                         reportedElapsedMs: 0, compensationMs: 99_000)
+        XCTAssertEqual(e.rounds[0].answers["guest"]?.responseMs, Int(5_000 - e.timing.maxCompensationMs))
+    }
+
+    func testClaimingToBeSlowerIsIgnored() throws {
+        let (e, opens) = try nearbyEngine()
+        _ = try e.submit(playerId: "guest", round: 1, choice: 0, now: opens + 1_000,
+                         reportedElapsedMs: 9_000, compensationMs: 200)
+        XCTAssertEqual(e.rounds[0].answers["guest"]?.responseMs, 1_000)
+    }
+
+    func testGuestTapJustBeforeZeroStillCountsButHostCannotGoOver() throws {
+        let (e, opens) = try nearbyEngine()
+        let closes = opens + 10_000
+        // Guest tapped at 9.95 s on their phone; the answer lands 150 ms after the nominal deadline.
+        let g = try e.submit(playerId: "guest", round: 1, choice: e.correctChoice(for: "guest"), now: closes + 100,
+                             reportedElapsedMs: 9_950, compensationMs: 200)
+        XCTAssertEqual(g.status, .accepted)
+        // The host has no network delay, so no grace.
+        XCTAssertEqual(try e.submit(playerId: "host", round: 1, choice: 0, now: closes).status, .tooLate)
+        // A guest answer whose time works out at 10 s or more is too late.
+        XCTAssertEqual(try e.submit(playerId: "third", round: 1, choice: 0, now: closes + 150,
+                                    reportedElapsedMs: 10_000, compensationMs: 200).status, .tooLate)
+    }
+
+    func testRoundStaysOpenForInFlightAnswersThenCloses() throws {
+        let (e, opens) = try nearbyEngine()
+        e.tick(now: opens + 10_000)
+        XCTAssertEqual(e.phase, .question, "held open for answers still on the network")
+        e.tick(now: opens + 10_000 + e.timing.maxCompensationMs)
+        XCTAssertEqual(e.phase, .reveal)
+    }
+}
