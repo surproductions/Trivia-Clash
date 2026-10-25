@@ -1,0 +1,26 @@
+name: Question bank
+
+on:
+  push:
+    paths: ["questions/**", "scripts/questions.py", "scripts/test_questions.py", "scripts/check_sources.py",
+            "ios/TriviaClash/Resources/questions.bin", ".github/workflows/questions.yml"]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install cryptography
+      - name: Validate questions
+        run: python3 scripts/questions.py validate
+      - name: Validator unit tests
+        run: python3 -m unittest scripts/test_questions.py -v
+      - name: Committed app bundle matches the question files
+        run: python3 scripts/questions.py check-bundle
+      - name: Referenced Wikipedia articles exist
+        run: python3 scripts/check_sources.py

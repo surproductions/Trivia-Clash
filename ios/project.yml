@@ -1,0 +1,85 @@
+# XcodeGen spec — generate the project with:  cd ios && xcodegen generate
+name: TriviaClash
+options:
+  bundleIdPrefix: com.surproductions
+  deploymentTarget:
+    iOS: "17.0"
+  createIntermediateGroups: true
+  developmentLanguage: en
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    MARKETING_VERSION: "1.0.0"
+    CURRENT_PROJECT_VERSION: "1"
+    CODE_SIGN_STYLE: Automatic
+    ENABLE_USER_SCRIPT_SANDBOXING: YES
+targets:
+  TriviaClash:
+    type: application
+    platform: iOS
+    sources:
+      - path: TriviaClash
+        excludes:
+          - "Resources/**"
+          - "Info.plist"
+      - path: TriviaClash/Resources
+        buildPhase: resources
+        excludes:
+          - "Assets.xcassets"
+          - "Assets.xcassets/**"
+      - path: TriviaClash/Resources/Assets.xcassets
+    info:
+      path: TriviaClash/Info.plist
+      properties:
+        CFBundleDisplayName: Trivia Clash
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        LSRequiresIPhoneOS: true
+        ITSAppUsesNonExemptEncryption: false
+        UILaunchScreen:
+          UIColorName: LaunchBackground
+        UIApplicationSceneManifest:
+          UIApplicationSupportsMultipleScenes: false
+        UIRequiresFullScreen: true
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+        NSLocalNetworkUsageDescription: Trivia Clash uses your local network to find and connect to games hosted by players nearby.
+        NSBonjourServices:
+          - _tclash._tcp
+          - _tclash._udp
+        CFBundleURLTypes:
+          - CFBundleURLName: com.surproductions.triviaclash
+            CFBundleURLSchemes:
+              - triviaclash
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.surproductions.triviaclash
+        PRODUCT_NAME: TriviaClash
+        TARGETED_DEVICE_FAMILY: "1"
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+        ENABLE_PREVIEWS: YES
+        SWIFT_EMIT_LOC_STRINGS: NO
+  TriviaClashTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: TriviaClashTests
+    dependencies:
+      - target: TriviaClash
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+        PRODUCT_BUNDLE_IDENTIFIER: com.surproductions.triviaclash.tests
+schemes:
+  TriviaClash:
+    build:
+      targets:
+        TriviaClash: all
+        TriviaClashTests: [test]
+    test:
+      config: Debug
+      targets:
+        - TriviaClashTests
+    archive:
+      config: Release
