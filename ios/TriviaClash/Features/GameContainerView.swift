@@ -66,6 +66,10 @@ struct GameContainerView: View {
                 SoundPlayer.shared.play(.wrong)
                 Haptics.warning()
             }
+            if view.room.mode != .solo {
+                // Standings update a beat after the verdict.
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) { SoundPlayer.shared.play(.leaderboard) }
+            }
         case .finished:
             app.record(finished: view, session: session)
             SoundPlayer.shared.play(.victory)

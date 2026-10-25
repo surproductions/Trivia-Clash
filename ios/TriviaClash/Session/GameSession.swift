@@ -21,8 +21,10 @@ class GameSession: ObservableObject, Identifiable {
     /// authority confirms it.
     @Published var pendingChoice: Int?
 
-    /// Local monotonic time corresponding to the authority's `view.serverNow`,
-    /// already corrected for the estimated one-way network delay.
+    /// Local monotonic time that is mapped to the authority's `view.serverNow`.
+    /// It is shifted back by two one-way delays: one for the view that just
+    /// arrived and one for an answer travelling back. The local countdown
+    /// therefore reaches zero just as a tap could still arrive in time.
     private(set) var anchorLocalMs: Int64 = 0
     /// Estimated one-way delay to the authority (0 for local engines).
     var oneWayLatencyMs: Int64 = 0
@@ -38,7 +40,7 @@ class GameSession: ObservableObject, Identifiable {
     /// Accept a new authoritative view received at local time `receivedAt`.
     func apply(_ newView: PlayerView, receivedAt: Int64) {
         if let current = view, current.room.id == newView.room.id, newView.version < current.version { return }
-        anchorLocalMs = receivedAt - oneWayLatencyMs
+        anchorLocalMs = receivedAt - 2 * oneWayLatencyMs
         if newView.round?.no != view?.round?.no || newView.room.matchNo != view?.room.matchNo {
             pendingChoice = nil
         }

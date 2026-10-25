@@ -115,9 +115,10 @@ final class ClockSyncTests: XCTestCase {
         session.oneWayLatencyMs = 40
         // Host clock says 1,000,000; we receive it at our local 5,000.
         session.apply(view(serverNow: 1_000_000), receivedAt: 5_000)
-        // Host deadline is 10 s after its "now"; locally that is 10 s after receipt minus the transit delay.
-        XCTAssertEqual(session.remainingMs(until: 1_010_000, now: 5_000), 9_960)
-        XCTAssertEqual(session.remainingMs(until: 1_010_000, now: 14_960), 0)
+        // The host deadline is 10 s after its "now". Locally the countdown ends 2 × 40 ms earlier:
+        // the view took ~40 ms to arrive, and an answer needs ~40 ms to get back.
+        XCTAssertEqual(session.remainingMs(until: 1_010_000, now: 5_000), 9_920)
+        XCTAssertEqual(session.remainingMs(until: 1_010_000, now: 14_920), 0)
         XCTAssertEqual(session.remainingMs(until: 1_010_000, now: 20_000), 0, "never negative")
     }
 
