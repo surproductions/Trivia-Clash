@@ -1,6 +1,6 @@
 # Scoring
 
-All points are calculated by the match authority: the player's own phone in solo, the host's phone in nearby play, and the database in the future online mode. Clients never send scores, speeds or timestamps.
+All points are calculated by the match authority: the player's own phone in solo, the host's phone in nearby play, and the database in the future online mode. Clients never send scores or correctness. Nearby guests do send their own reaction time, but the host accepts it only within the network delay it measured itself (see the speed bonus below).
 
 | Component | Rule |
 |---|---|

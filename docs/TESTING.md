@@ -2,11 +2,11 @@
 
 ## Automated: what ran and the results
 
-The latest verified run is [CI run 40202674366](https://github.com/surproductions/Trivia-Clash/actions/runs/40202674366) on commit `3a8c31d`, on 2026-10-25, using Xcode 26.6 and an iPhone 17 Pro simulator on iOS 26.5.
+The latest verified run is [CI run 40210796212](https://github.com/surproductions/Trivia-Clash/actions/runs/40210796212) on commit `20877aa`, on 2026-10-25, using Xcode 26.6 and an iPhone 17 Pro simulator on iOS 26.5.
 
 | Suite | Command | Result |
 |---|---|---|
-| iOS unit tests (XCTest) | `xcodebuild test -scheme TriviaClash` | **54 passed, 0 failed** |
+| iOS unit tests (XCTest) | `xcodebuild test -scheme TriviaClash` | **63 passed, 0 failed** |
 | Question validator + tooling | `python3 -m unittest scripts/test_questions.py` | **11 passed** |
 | Question bank validation | `python3 scripts/questions.py validate` | **1,000 questions, 0 problems** |
 | Bundle up to date | `python3 scripts/questions.py check-bundle` | passed |
@@ -24,7 +24,8 @@ The latest verified run is [CI run 40202674366](https://github.com/surproduction
 | `TeamTests` (6) | Auto-balance, anti-stacking, teams locked after start, empty-team guard, average scoring with consistent totals, tied teams |
 | `QuestionBankTests` (7) | The shipped bundle decrypts with ≥ 1,000 valid, unique questions; every category × difficulty has enough questions; answer positions vary; a tampered bundle is rejected; pick filters; unseen-first and no duplicates; category spread |
 | `WireProtocolTests` (3) | Message round-trips; a state message has no answer before close; garbage is ignored |
-| `ClockSyncTests` (2) | Host deadline mapped to the local monotonic clock with latency compensation; stale views ignored |
+| `ClockSyncTests` (4) | NTP-style offset from the lowest-latency sample; every phone reveals at the shared moment; a late-arriving question starts the player's clock on arrival without moving the deadline; stale views ignored |
+| `FairnessTests` (7) | Questions are sent ahead and revealed together; host and guest get the same score for the same reaction time; reported time can't undercut the measured delay; compensation capped at 400 ms; claiming to be slower is ignored; a guest tap just before zero counts while the host gets no grace; the round stays open for answers in flight, then closes |
 | `ProfileTests` (1) | Name cleaning, length and blocklist |
 
 ## Not yet tested (needs real devices)
