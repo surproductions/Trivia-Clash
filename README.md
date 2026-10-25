@@ -6,7 +6,7 @@ A fast, original trivia party game for iPhone. Every question has a strict **10-
 |---|---|
 | Platform | iPhone, iOS 17+, SwiftUI |
 | Modes | Solo (offline) · Nearby free-for-all · Nearby team battle |
-| Questions | 4,909 original questions in 16 categories, at least 300 each ([stats](docs/QUESTION_STATS.md)) |
+| Questions | 4,908 original questions in 16 categories, at least 300 each ([stats](docs/QUESTION_STATS.md)) |
 | Multiplayer | Apple Multipeer Connectivity (Wi-Fi / Bluetooth, encrypted). The host's phone is the referee |
 | Online play | Supabase backend designed and partly deployed; not yet enabled in the app ([status](docs/BACKEND.md)) |
 

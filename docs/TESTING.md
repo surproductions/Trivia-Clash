@@ -8,7 +8,7 @@ The latest verified run is [CI run 40210796212](https://github.com/surproduction
 |---|---|---|
 | iOS unit tests (XCTest) | `xcodebuild test -scheme TriviaClash` | **63 passed, 0 failed** |
 | Question validator + tooling | `python3 -m unittest scripts/test_questions.py` | **11 passed** |
-| Question bank validation | `python3 scripts/questions.py validate` | **4,909 questions, 0 problems** |
+| Question bank validation | `python3 scripts/questions.py validate` | **4,908 questions, 0 problems** |
 | Bundle up to date | `python3 scripts/questions.py check-bundle` | passed |
 | Source links | `python3 scripts/check_sources.py` | **955/955** Wikipedia articles exist (one bad link found and fixed) |
 | Release build | archive → App Store export → signature/profile verification | passed (signed IPA, Team Store profile) |
