@@ -5,7 +5,7 @@ All points are calculated by the match authority: the player's own phone in solo
 | Component | Rule |
 |---|---|
 | Correct answer | **1,000** |
-| Speed bonus | `floor(250 × remainingMs / 10,000)`, where `remainingMs = deadline − authority receive time`, clamped to 0…10,000 |
+| Speed bonus | `floor(250 × remainingMs / 10,000)`, where `remainingMs = 10,000 − reaction time` and reaction time is measured from the synchronised reveal. In nearby play the guest's network delay is credited back within the round-trip time the host measured (max 400 ms), so host and guests are scored alike |
 | Streak bonus | `50 × min(previous consecutive correct answers, 4)`, so +50, +100, +150, then a cap of +200 |
 | Final question (optional) | ×2 on the whole question score when the host enables "Double-points finale" |
 | Wrong answer | 0, streak resets |
@@ -22,7 +22,7 @@ A perfect 10-question game without the finale tops out around 14,000 points. Spe
 ## Integrity rules
 
 - **One answer per player per round.** The first accepted answer is final. Retries return `already_answered` with the stored choice and score nothing.
-- **Strict deadline.** An answer accepted at exactly the deadline, or later, is rejected (`too_late`).
+- **Strict deadline.** An answer whose reaction time is 10 s or more is rejected (`too_late`). For remote players the host accepts arrivals up to 400 ms past the nominal deadline, so taps made in time still count.
 - **Scores are hidden until the round closes.** Per-answer points are stored privately and applied at close, so scoreboards can't leak correctness mid-round.
 - **Scores can't go negative.** The database enforces `check (score >= 0)`.
 

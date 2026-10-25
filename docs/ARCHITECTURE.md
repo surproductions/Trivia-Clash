@@ -41,7 +41,11 @@ The UI is MVVM-style: views observe a `GameSession`, which publishes a `PlayerVi
 All deadlines use `clock_gettime_nsec_np(CLOCK_MONOTONIC)`, which counts through device sleep and ignores wall-clock changes.
 
 - **Solo:** the engine and the UI share one clock.
-- **Nearby:** guests receive `serverNow` plus deadlines in the host's clock. A guest maps them onto its own monotonic clock using the time a view arrived, shifted by two estimated one-way latencies (ping/pong every 2 s, smoothed). One covers the view arriving and one covers the answer travelling back, so a tap before the local countdown reaches zero still arrives in time. That estimate only affects how the countdown is drawn. Acceptance is always decided by the host's clock when the answer arrives.
+- **Nearby (fair timing):**
+  1. *Clock sync.* Guests estimate the host-to-local clock offset NTP-style. A burst of probes is sent on joining, then one per second, and the lowest-round-trip sample wins, so offsets are typically accurate to a few milliseconds.
+  2. *Synchronised reveal.* Each question is published 1.2 s (`deliveryLeadMs`) before its `opensAt`. Every phone, the host's included, shows a "Question N" splash and reveals the question at exactly `opensAt` on its own clock.
+  3. *Local reaction time.* A guest sends its reaction time (reveal → tap, measured on its own monotonic clock) with the answer. If a question arrived after the reveal time, for example after a reconnect, the clock starts on arrival.
+  4. *Bounded trust.* The host measures each guest's round-trip time itself (1.5 s probes). It accepts the reported time only within `min(rtt + 40 ms, 400 ms)` of the arrival-based time: `elapsed = clamp(reported, arrival − credit, arrival)`. The round stays open 400 ms past the 10-second mark for answers in flight. Any answer whose elapsed time is ≥ 10 s scores nothing. The host's own answers get no credit and no grace.
 
 ## Nearby networking
 
