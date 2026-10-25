@@ -8,8 +8,8 @@
 2. Unit tests run on the newest available iPhone simulator.
 3. `scripts/write_asc_key.sh` writes the App Store Connect API key from `ASC_KEY_P8`. It accepts a full PEM, base64 of a PEM, or just the key body.
 4. `scripts/asc.py` registers the bundle ID `com.surproductions.triviaclash` if it's missing and finds the App Store Connect app record. The build number is a UTC timestamp (`YYYYMMDDHHMM`), bumped past the latest uploaded build.
-5. `xcodebuild archive` runs with **automatic signing**, `-allowProvisioningUpdates` and the API key. Xcode creates or uses the certificates and profiles it needs.
-6. `xcodebuild -exportArchive` with `method = app-store-connect` produces the IPA (cloud-managed distribution signing).
+5. `xcodebuild archive` builds **unsigned**. The team is at its Apple Development certificate limit, so automatic development signing can't create a new certificate. No existing certificate is revoked.
+6. `xcodebuild -exportArchive` with `method = app-store-connect`, `-allowProvisioningUpdates` and the API key signs the IPA with Apple's **cloud-managed distribution certificate** and an automatically created *iOS Team Store* provisioning profile.
 7. The IPA is verified: bundle ID, version, presence of the encrypted question bundle, code signature and provisioning profile.
 8. `xcrun altool --upload-app` sends it to TestFlight.
 9. The IPA is attached to a GitHub **pre-release** tagged `v1.0.0-build.<number>` and saved as a workflow artifact.
