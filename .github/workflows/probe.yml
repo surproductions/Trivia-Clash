@@ -35,4 +35,5 @@ jobs:
           KEY=$(scripts/write_asc_key.sh)
           python3 -m pip install --quiet --break-system-packages pyjwt cryptography || python3 -m pip install --quiet pyjwt cryptography
           ASC_KEY_PATH="$KEY" python3 scripts/asc.py apps
+          ASC_KEY_PATH="$KEY" python3 scripts/asc.py ensure-bundle-id com.surproductions.triviaclash "Trivia Clash"
           xcrun simctl list runtimes | grep -i ios || true

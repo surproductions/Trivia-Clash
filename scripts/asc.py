@@ -7,6 +7,7 @@ environment. Never prints key material.
   asc.py apps                       list apps (name, bundle id, id)
   asc.py find-app "Trivia Clash"    print bundle id of the best matching app, or nothing
   asc.py latest-build <app-id>      print the highest uploaded build number for the app
+  asc.py ensure-bundle-id <id> <name>  register an iOS bundle identifier if missing
 """
 import json
 import os
@@ -41,6 +42,13 @@ def get(path: str, params: dict | None = None) -> dict:
         return json.load(resp)
 
 
+def post(path: str, body: dict) -> dict:
+    req = urllib.request.Request(f"{API}{path}", data=json.dumps(body).encode(), method="POST",
+                                 headers={"Authorization": f"Bearer {token()}", "Content-Type": "application/json"})
+    with urllib.request.urlopen(req, timeout=30) as resp:
+        return json.load(resp)
+
+
 def apps() -> list[dict]:
     out, data = [], get("/apps", {"limit": 200, "fields[apps]": "name,bundleId,sku"})
     for a in data.get("data", []):
@@ -69,6 +77,15 @@ def main() -> None:
         versions = [int(b["attributes"]["version"]) for b in data.get("data", [])
                     if b["attributes"]["version"].isdigit()]
         print(max(versions) if versions else 0)
+    elif cmd == "ensure-bundle-id":
+        ident, name = sys.argv[2], sys.argv[3]
+        found = get("/bundleIds", {"filter[identifier]": ident, "limit": 5}).get("data", [])
+        if any(b["attributes"]["identifier"] == ident for b in found):
+            print(f"bundle id {ident}: already registered")
+            return
+        post("/bundleIds", {"data": {"type": "bundleIds",
+                                     "attributes": {"identifier": ident, "name": name, "platform": "IOS"}}})
+        print(f"bundle id {ident}: registered")
     else:
         sys.exit(f"unknown command {cmd}")
 
