@@ -19,3 +19,4 @@ ios/TriviaClash.xcodeproj/
 .DS_Store
 node_modules/
 __pycache__/
+questions/_staging/
