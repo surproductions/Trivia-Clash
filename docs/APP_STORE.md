@@ -20,7 +20,7 @@ Nothing here has been submitted. This is prepared material only.
 > • Free-for-All: host a room and friends join from their own phones with a 5-letter code
 > • Team Battle: split into up to four teams; team scores are averaged so uneven teams stay fair
 >
-> 1,000 ORIGINAL QUESTIONS
+> NEARLY 5,000 ORIGINAL QUESTIONS
 > General knowledge, science, history, geography, sports, movies & TV, music, video games, technology, food, art & literature, animals, space, mythology, pop culture, and maths & logic. Pick categories and difficulty, or hit Surprise Me.
 >
 > FAIR BY DESIGN

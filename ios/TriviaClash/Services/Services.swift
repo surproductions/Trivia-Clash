@@ -112,7 +112,7 @@ final class LocalStore {
     /// Most recently served question ids, newest last (capped).
     var seenQuestions: [String] {
         get { defaults.stringArray(forKey: "tc.seen") ?? [] }
-        set { defaults.set(Array(newValue.suffix(600)), forKey: "tc.seen") }
+        set { defaults.set(Array(newValue.suffix(2000)), forKey: "tc.seen") }
     }
 
     func markSeen(_ ids: [String]) {

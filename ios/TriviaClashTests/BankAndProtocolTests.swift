@@ -8,7 +8,7 @@ final class QuestionBankTests: XCTestCase {
 
     func testBundledBankDecryptsAndIsValid() throws {
         let bank = try bundled()
-        XCTAssertGreaterThanOrEqual(bank.questions.count, 1000)
+        XCTAssertGreaterThanOrEqual(bank.questions.count, 4800)
         XCTAssertEqual(Set(bank.questions.map(\.id)).count, bank.questions.count, "ids must be unique")
         XCTAssertEqual(Set(bank.questions.map { $0.prompt.lowercased() }).count, bank.questions.count, "prompts must be unique")
         for q in bank.questions {
@@ -24,9 +24,9 @@ final class QuestionBankTests: XCTestCase {
     func testEveryCategoryHasEnoughQuestionsForEveryDifficulty() throws {
         let bank = try bundled()
         for cat in TriviaCategory.allCases {
-            XCTAssertGreaterThanOrEqual(bank.count(in: cat), 50, cat.rawValue)
+            XCTAssertGreaterThanOrEqual(bank.count(in: cat), 300, cat.rawValue)
             for d in DifficultyFilter.allCases {
-                XCTAssertGreaterThanOrEqual(bank.count(in: cat, difficulty: d), 3, "\(cat.rawValue) \(d.rawValue)")
+                XCTAssertGreaterThanOrEqual(bank.count(in: cat, difficulty: d), 60, "\(cat.rawValue) \(d.rawValue)")
             }
         }
     }

@@ -15,7 +15,7 @@ The 10-second window is a core rule, not a cosmetic timer. These protections mak
 | No correctness leaks | Scores and streaks update only when a round closes; mid-round, others see only who has locked in. |
 | Server-side scoring | Correctness and points are computed by the authority. A guest can't send a score, speed or "correct" flag; the protocol has no field for it. |
 | Reconnects grant nothing | Rejoining restores the seat and existing answer. Deadlines don't move. |
-| Question rotation | Recently seen questions (last 600 per device, plus those reported by each player who joins) are avoided. Selection is random, interleaves categories and happens on the authority. |
+| Question rotation | Recently seen questions (last 2,000 per device, plus those reported by each player who joins) are avoided. Selection is random, interleaves categories and happens on the authority. |
 | Room access | 5-character codes from a 31-symbol alphabet. The host only admits peers presenting the matching code over an encrypted Multipeer session. Room size is capped at 12. The host can remove players. |
 | Answer key not in plain text | The bundled question set is AES-GCM encrypted and decrypted in memory. |
 | Spam protection | Guest requests are ignored unless they come from a mapped peer. Submissions are idempotent, and an out-of-range choice is rejected. |

@@ -10,7 +10,7 @@ Online room-code play over the internet is **designed but not yet enabled in the
 | `0002_engine.sql`: game engine functions | Written, **not applied**. Supabase's approval prompt never reached the project owner during the build session. |
 | `0003_api.sql`: public `tc_*` RPC API | Written, not applied |
 | `0004_maintenance.sql`: 5-minute cleanup cron job | Written, not applied |
-| `seed/questions.sql`: 1,000 questions | Generated, not applied |
+| `seed/questions.sql`: 4,909 questions | Generated, not applied |
 | iOS online client (`GameSession` subclass using the RPCs) | Not built |
 
 The Supabase project is shared with other apps (`fd_*`, `ph_*`, `pb_*` tables). Everything Trivia Clash adds is isolated in the `tc_private` schema and `public.tc_*` functions.
