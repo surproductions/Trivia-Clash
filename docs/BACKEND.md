@@ -13,7 +13,7 @@ Online room-code play over the internet is **designed but not yet enabled in the
 | `seed/questions.sql`: 4,908 questions | Generated, not applied |
 | iOS online client (`GameSession` subclass using the RPCs) | Not built |
 
-The Supabase project is shared with other apps (`fd_*`, `ph_*`, `pb_*` tables). Everything Trivia Clash adds is isolated in the `tc_private` schema and `public.tc_*` functions.
+The Supabase project is shared with other apps (`fd_*`, `ph_*`, `pb_*` tables). Everything Trivia Clasher adds is isolated in the `tc_private` schema and `public.tc_*` functions.
 
 ## Design
 

@@ -1,4 +1,4 @@
-# Trivia Clash
+# Trivia Clasher
 
 A fast, original trivia party game for iPhone. Every question has a strict **10-second** window, which leaves little time to look an answer up. Play solo, or host a game that friends nearby join from their own phones with a 5-letter room code: free-for-all or team battle, up to 12 players.
 

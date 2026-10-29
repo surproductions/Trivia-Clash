@@ -1,7 +1,7 @@
 # Question bank
 
 - **4,908 original questions** across 16 categories (at least 300 per category: about 140 easy, 100 medium and 60 hard). Counts by category and difficulty are in [QUESTION_STATS.md](QUESTION_STATS.md).
-- Written for Trivia Clash. Nothing is copied from commercial trivia sets.
+- Written for Trivia Clasher. Nothing is copied from commercial trivia sets.
 - Focused on timeless facts. Anything that changes over time (sports records, office holders, box-office rankings) is avoided or phrased as a fixed historical fact.
 
 ## Format

@@ -76,7 +76,7 @@ jobs:
           KEY=$(scripts/write_asc_key.sh)
           echo "ASC_KEY_PATH=$KEY" >> "$GITHUB_ENV"
           python3 -m pip install --quiet --break-system-packages pyjwt cryptography || python3 -m pip install --quiet pyjwt cryptography
-          ASC_KEY_PATH="$KEY" python3 scripts/asc.py ensure-bundle-id "$BUNDLE_ID" "Trivia Clash"
+          ASC_KEY_PATH="$KEY" python3 scripts/asc.py ensure-bundle-id "$BUNDLE_ID" "Trivia Clasher"
           APP=$(ASC_KEY_PATH="$KEY" python3 scripts/asc.py apps | awk -F'\t' -v b="$BUNDLE_ID" '$2==b {print $3}')
           echo "ASC_APP_ID=$APP" >> "$GITHUB_ENV"
           if [ -n "$APP" ]; then
@@ -168,5 +168,5 @@ jobs:
         run: |
           TAG="v1.0.0-build.$BUILD_NUMBER"
           gh release create "$TAG" "$IPA_PATH" --target "$GITHUB_SHA" --prerelease \
-            --title "Trivia Clash 1.0.0 (build $BUILD_NUMBER)" \
+            --title "Trivia Clasher 1.0.0 (build $BUILD_NUMBER)" \
             --notes "App Store Connect–signed IPA built by CI from ${GITHUB_SHA::7}. Install through TestFlight; this IPA cannot be sideloaded directly onto a device."

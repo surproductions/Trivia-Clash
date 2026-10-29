@@ -179,7 +179,7 @@ final class NearbyHostSession: EngineSession {
         let now = Monotonic.nowMs()
         if case let .hello(playerId, name, avatar, seen, version) = message {
             guard version == WireProtocol.version else {
-                transport.send(.rejected(reason: "Please update Trivia Clash to play together."), to: [peer])
+                transport.send(.rejected(reason: "Please update Trivia Clasher to play together."), to: [peer])
                 return
             }
             let cleanName = Profile.isValid(name) ? Profile.clean(name) : "Player"

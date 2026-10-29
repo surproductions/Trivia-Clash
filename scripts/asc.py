@@ -5,7 +5,7 @@ Reads ASC_KEY_ID, ASC_ISSUER_ID and the .p8 key path (ASC_KEY_PATH) from the
 environment. Never prints key material.
 
   asc.py apps                       list apps (name, bundle id, id)
-  asc.py find-app "Trivia Clash"    print bundle id of the best matching app, or nothing
+  asc.py find-app "Trivia Clasher"    print bundle id of the best matching app, or nothing
   asc.py latest-build <app-id>      print the highest uploaded build number for the app
   asc.py ensure-bundle-id <id> <name>  register an iOS bundle identifier if missing
 """

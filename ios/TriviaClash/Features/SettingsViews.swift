@@ -32,7 +32,7 @@ struct SettingsView: View {
                 Text("Every question includes an explanation and a reference link shown after the round. Answers are stored encrypted in the app and only revealed when a round closes.")
             }
             Section {
-                Text("Trivia Clash has no accounts, ads or tracking. Your name, badge, settings and stats stay on this phone. In nearby games, your name and badge are shared only with players in the same room over a direct, encrypted local connection.")
+                Text("Trivia Clasher has no accounts, ads or tracking. Your name, badge, settings and stats stay on this phone. In nearby games, your name and badge are shared only with players in the same room over a direct, encrypted local connection.")
                     .font(.footnote)
                 Button("Reset statistics") { confirmStats = true }
                 Button("Delete all my data", role: .destructive) { confirmReset = true }

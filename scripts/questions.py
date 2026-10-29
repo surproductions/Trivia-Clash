@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Trivia Clash question-bank tool.
+"""Trivia Clasher question-bank tool.
 
   questions.py validate          check every file in questions/ (exit 1 on any error)
   questions.py stats             print counts per category and difficulty

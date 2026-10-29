@@ -1,7 +1,7 @@
 import SwiftUI
 import UIKit
 
-/// Trivia Clash visual identity: deep navy surfaces, one electric "volt" accent,
+/// Trivia Clasher visual identity: deep navy surfaces, one electric "volt" accent,
 /// heavy expanded type, and colour used only where it carries meaning
 /// (your answer, right/wrong, teams, the clock).
 enum Theme {

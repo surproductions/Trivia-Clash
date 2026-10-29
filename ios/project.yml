@@ -31,7 +31,7 @@ targets:
     info:
       path: TriviaClash/Info.plist
       properties:
-        CFBundleDisplayName: Trivia Clash
+        CFBundleDisplayName: Trivia Clasher
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         LSRequiresIPhoneOS: true
@@ -43,7 +43,7 @@ targets:
         UIRequiresFullScreen: true
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
-        NSLocalNetworkUsageDescription: Trivia Clash uses your local network to find and connect to games hosted by players nearby.
+        NSLocalNetworkUsageDescription: Trivia Clasher uses your local network to find and connect to games hosted by players nearby.
         NSBonjourServices:
           - _tclash._tcp
           - _tclash._udp

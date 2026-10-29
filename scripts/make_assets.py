@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generates Trivia Clash's original app icon and sound effects.
+"""Generates Trivia Clasher's original app icon and sound effects.
 
   python3 scripts/make_assets.py
 

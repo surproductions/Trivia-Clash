@@ -36,7 +36,7 @@ class GameSession: ObservableObject, Identifiable {
 
     var isHost: Bool { view?.room.hostId == myId }
     var me: MemberView? { view?.members.first { $0.id == myId } }
-    var title: String { "Trivia Clash" }
+    var title: String { "Trivia Clasher" }
     /// True when this device runs the authoritative engine.
     var isAuthority: Bool { false }
 

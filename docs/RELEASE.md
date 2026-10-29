@@ -30,7 +30,7 @@ The API key needs the **Admin** role, or App Manager with access to cloud-manage
 TestFlight uploads need an app record, which Apple's API can't create:
 
 1. **App Store Connect › Apps › + › New App**
-2. Platform iOS, name *Trivia Clash* (or a variant if taken), primary language English
+2. Platform iOS, name *Trivia Clasher* (or a variant if taken), primary language English
 3. Bundle ID `com.surproductions.triviaclash` (CI has already registered it), SKU `triviaclash`
 
 Then re-run the workflow. Uploaded builds appear under TestFlight after Apple's processing (usually 5–30 minutes). Internal testers can install immediately. External testers need a short Beta App Review.

@@ -81,12 +81,14 @@ struct Wordmark: View {
                 .frame(width: 6)
                 .rotationEffect(.degrees(14))
                 .padding(.vertical, 2)
-            Text("CLASH").foregroundStyle(Theme.voltInk)
+            Text("CLASHER").foregroundStyle(Theme.voltInk)
         }
         .font(.display(size))
-        .fixedSize()
+        .lineLimit(1)
+        .minimumScaleFactor(0.5)
+        .fixedSize(horizontal: false, vertical: true)
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("Trivia Clash")
+        .accessibilityLabel("Trivia Clasher")
     }
 }
 

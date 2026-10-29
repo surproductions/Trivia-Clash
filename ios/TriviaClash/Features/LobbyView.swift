@@ -59,11 +59,11 @@ struct LobbyView: View {
                         .minimumScaleFactor(0.6)
                         .lineLimit(1)
                         .accessibilityLabel("Room code \(view.room.code.map(String.init).joined(separator: " "))")
-                    Text("Friends nearby: open Trivia Clash › Join, or scan the QR code with the Camera.")
+                    Text("Friends nearby: open Trivia Clasher › Join, or scan the QR code with the Camera.")
                         .font(.footnote)
                         .foregroundStyle(Theme.inkMuted)
                     HStack(spacing: 10) {
-                        ShareLink(item: "Join my Trivia Clash game! Open the app, tap Join and enter code \(view.room.code). Link: \(joinLink)") {
+                        ShareLink(item: "Join my Trivia Clasher game! Open the app, tap Join and enter code \(view.room.code). Link: \(joinLink)") {
                             Label("Share", systemImage: "square.and.arrow.up")
                         }
                         Button { showQR = true } label: { Label("QR", systemImage: "qrcode") }
@@ -274,7 +274,7 @@ struct LobbyView: View {
             QRCodeView(text: joinLink).frame(maxWidth: 280)
             Text(view.room.code).font(.system(size: 40, weight: .black, design: .monospaced)).tracking(6)
                 .foregroundStyle(Theme.voltInk)
-            Text("Players must be nearby and have Trivia Clash installed.")
+            Text("Players must be nearby and have Trivia Clasher installed.")
                 .font(.footnote).foregroundStyle(Theme.inkMuted).multilineTextAlignment(.center)
             Button("Done") { showQR = false }.buttonStyle(.secondary).frame(maxWidth: 200)
         }
